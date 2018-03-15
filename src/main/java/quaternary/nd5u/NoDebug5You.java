@@ -13,6 +13,7 @@ import net.minecraftforge.fml.relauncher.ReflectionHelper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.lang.reflect.Field;
 import java.util.*;
 
 @Mod(modid = NoDebug5You.MODID, name = NoDebug5You.NAME, version = NoDebug5You.VERSION, clientSideOnly = true)
@@ -23,10 +24,8 @@ public class NoDebug5You {
 	
 	public static final Logger log = LogManager.getLogger(NAME);
 	
-	//I know this is a spooky internal event.
-	//BUT! it's fired *after* postinit, so i'm sure to get all the event subscribers.
 	@Mod.EventHandler
-	public static void loadComplete(FMLLoadCompleteEvent e) {		
+	public static void postinit(FMLPostInitializationEvent e) {		
 		MinecraftForge.EVENT_BUS.register(new Testing2());
 		
 		//Find the list of methods that are registered to RenderGameOverlayEvent.Text,
@@ -49,29 +48,31 @@ public class NoDebug5You {
 		OperationMode operationMode = NoDebug5YouConfig.operationMode;
 		List<String> list = Arrays.asList(NoDebug5YouConfig.list);
 		
-		//Now the weird part, converting functional interface *implementations* to strings (?!)
-		//I genuinely don't know why this works or where this string comes from
 		for(IEventListener listener : listeners) {
-			String s = listener.toString();
+			if(!(listener instanceof ASMEventHandler)) {
+				debug("Found a " + listener.getClass().getCanonicalName());
+				debug("which is not an asmeventhandler");
+				continue;
+			}
 			
-			log.info("HYPER DEBUGGG " + s);
+			String s = listener.toString(); //ASMEventHandler#readable
+			debug("Found a " + s);
 			
-			if(!s.startsWith("ASM: ")) continue;
-			if(!s.contains("RenderGameOverlayEvent$Text")) continue;
+			if(!s.contains("RenderGameOverlayEvent$Text")) {
+				debug("Somehow this doesnt have the text event idk");
+				continue;
+			}
 			
-			log.info("good");
-			
-			//split on whitespace
+			//now parse this weird string to find the class name
 			String[] split = s.split("\\s");
 			
 			String className;
 			if(split[1].equals("class")) { //static event handler
 				className = split[2];
-			} else { //non-static; chop off the instance bit
+			} else { //non-static event handler; chop off the instance thingie
 				className = split[1].split("@")[0];
 			}
 			
-			//String className = split[2];
 			if(NoDebug5YouConfig.dump) log.info(className);
 			
 			if(operationMode == OperationMode.NOTHING) continue;
@@ -92,6 +93,10 @@ public class NoDebug5You {
 	
 	private static void hr() {
 		log.info("===========================================================");
+	}
+	
+	private static void debug(String blah) {
+		if(NoDebug5YouConfig.debuggerino) log.info("DEBUG:::: " + blah);
 	}
 	
 	@Mod.EventBusSubscriber
