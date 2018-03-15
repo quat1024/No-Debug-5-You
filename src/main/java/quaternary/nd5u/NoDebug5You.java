@@ -100,7 +100,7 @@ public class NoDebug5You {
 		}
 		
 		dumpList.add(HR);
-		dumpList.add("A grand total of " + classCount + " classes.");
+		dumpList.add("A grand total of " + classCount + " class" + (classCount == 1 ? "." : "es."));
 		dumpList.add("If you would like to disable these, add the class name to your NoDebug5You config file!");
 		dumpList.add(HR);
 		
