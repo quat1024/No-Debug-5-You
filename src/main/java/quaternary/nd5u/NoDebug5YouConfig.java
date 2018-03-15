@@ -5,20 +5,21 @@ import net.minecraftforge.common.config.Config;
 
 @Config(modid = NoDebug5You.MODID, name="NoDebug5You")
 public class NoDebug5YouConfig {
-	@Config.Comment("Should No Debug 5 You dump a list of class names rendering F3 debug information to the console on game startup? (Look for a bunch of ====== in your log during postinit.)")
-	public static boolean dump = true;
+	@Config.Comment("Should No Debug 5 You dump a list of class names rendering F3 debug information to the console? You'll see one log on game startup, and another when you log in (to catch a few more)")
+	public static boolean dump = false;
 	
-	//TODO nuke this
-	@Config.Comment("Should No Debug 5 You spam your console with useless crap?")
-	public static boolean debuggerino = true;
-	
-	//TODO Please rememebr to put this back on WHITELIST before releasing
-	@Config.Comment("What mode should ND5U operate in?\n\nNOTHING: do not unsubscribe anything.\nALL: nuke all subscribers to RenderGameOverlayEvent.Text (will cause problems because this event has other purposes too!)\nWHITELIST: unsubscribe only event handlers in classes given in the \"list\" config option.\nBLACKLIST: unsubscribe all event handlers except ones in classes given in the \"list\" config option.")
-	public static OperationMode operationMode = OperationMode.ALL;
+	@Config.Comment("What mode should ND5U operate in?\n\nNOTHING: do not unsubscribe anything.\nALL: indiscriminately nuke all subscribers to RenderGameOverlayEvent.Text.\nWHITELIST: unsubscribe only event handlers in classes given in the \"list\" config option.\nBLACKLIST: unsubscribe all event handlers except ones in classes given in the \"list\" config option.")
+	public static OperationMode operationMode = OperationMode.WHITELIST;
 	
 	@Config.Comment("The list of class names to use in WHITELIST or BLACKLIST mode.")
 	public static String[] list = new String[]{
+		//botania
 		"vazkii.botania.client.core.handler.DebugHandler",
-		"hellfirepvp.astralsorcery.client.effect.EffectHandler"
+		//astral
+		"hellfirepvp.astralsorcery.client.effect.EffectHandler",
+		//dynamicsurroundings (don't ask me why the class is like this)
+		"DiagnosticHandler{name=Diagnostics}",
+		//journeymap
+		"journeymap.client.forge.event.MiniMapOverlayHandler"	
 	};
 }

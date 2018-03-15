@@ -6,17 +6,17 @@ import net.minecraftforge.client.event.ClientChatEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.event.FMLLoadCompleteEvent;
 import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
 import net.minecraftforge.fml.common.eventhandler.*;
+import net.minecraftforge.fml.common.gameevent.TickEvent;
 import net.minecraftforge.fml.relauncher.ReflectionHelper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.lang.reflect.Field;
 import java.util.*;
 
 @Mod(modid = NoDebug5You.MODID, name = NoDebug5You.NAME, version = NoDebug5You.VERSION, clientSideOnly = true)
+@Mod.EventBusSubscriber
 public class NoDebug5You {
 	public static final String MODID = "nd5u";
 	public static final String NAME = "No Debug 5 You";
@@ -24,10 +24,29 @@ public class NoDebug5You {
 	
 	public static final Logger log = LogManager.getLogger(NAME);
 	
+	static String HR = "========================================================";
+	
 	@Mod.EventHandler
-	public static void postinit(FMLPostInitializationEvent e) {		
-		MinecraftForge.EVENT_BUS.register(new Testing2());
+	public static void postinit(FMLPostInitializationEvent e) {			
+		doRemovals();
+	}
+	
+	//catch mods that register their event handlers a bit late
+	// *glares at OreCruncher
+	static boolean loggedIn;
+	@SubscribeEvent
+	public static void clientTick(TickEvent.ClientTickEvent e) {
+		if(!loggedIn && Minecraft.getMinecraft().world != null) {
+			doRemovals();
+			loggedIn = true;
+		}
 		
+		if(loggedIn && Minecraft.getMinecraft().world == null) {
+			loggedIn = false;
+		}
+	}
+	
+	private static void doRemovals() {
 		//Find the list of methods that are registered to RenderGameOverlayEvent.Text,
 		//which is the event responsible for mods rendering things in f3
 		//(Oddly enough getListenerList isn't static so I have to do a little song and dance)
@@ -39,29 +58,21 @@ public class NoDebug5You {
 		ListenerList textListeners = dummy2.getListenerList();
 		IEventListener[] listeners = textListeners.getListeners(eventBusID);
 		
-		if(NoDebug5YouConfig.dump) {
-			hr();
-			log.info("Beginning dump of class names...");
-			hr();
-		}
+		List<String> dumpList = new ArrayList<>();
+		int classCount = 0;
+		dumpList.add(HR);
+		dumpList.add("Beginning dump of class names...");
+		dumpList.add(HR);
 		
 		OperationMode operationMode = NoDebug5YouConfig.operationMode;
 		List<String> list = Arrays.asList(NoDebug5YouConfig.list);
 		
 		for(IEventListener listener : listeners) {
-			if(!(listener instanceof ASMEventHandler)) {
-				debug("Found a " + listener.getClass().getCanonicalName());
-				debug("which is not an asmeventhandler");
-				continue;
-			}
+			if(!(listener instanceof ASMEventHandler)) continue;
 			
-			String s = listener.toString(); //ASMEventHandler#readable
-			debug("Found a " + s);
+			String s = listener.toString(); //ASMEventHandler#readable basically
 			
-			if(!s.contains("RenderGameOverlayEvent$Text")) {
-				debug("Somehow this doesnt have the text event idk");
-				continue;
-			}
+			if(!s.contains("RenderGameOverlayEvent$Text")) continue;
 			
 			//now parse this weird string to find the class name
 			String[] split = s.split("\\s");
@@ -73,49 +84,30 @@ public class NoDebug5You {
 				className = split[1].split("@")[0];
 			}
 			
-			if(NoDebug5YouConfig.dump) log.info(className);
+			dumpList.add("Found a class: '" + className + "'");
+			if(className.contains("{")) {
+				dumpList.add("(I know that doesn't look like a class name, sorry about that! It will still work)");
+			}
+			classCount++;
 			
 			if(operationMode == OperationMode.NOTHING) continue;
 			if(operationMode == OperationMode.WHITELIST && !list.contains(className)) continue;
 			if(operationMode == OperationMode.BLACKLIST && list.contains(className)) continue;
 			
-			if(NoDebug5YouConfig.dump) log.info("(The above class was unsubscribed due to your ND5U config options.)");
+			dumpList.add("(The above class was already unsubscribed due to your ND5U config options.)");
 			
 			textListeners.unregister(eventBusID, listener);
 		}
 		
-		if(NoDebug5YouConfig.dump) {
-			hr();
-			log.info("That's all, folks!");
-			hr();
-		}
-	}
-	
-	private static void hr() {
-		log.info("===========================================================");
-	}
-	
-	private static void debug(String blah) {
-		if(NoDebug5YouConfig.debuggerino) log.info("DEBUG:::: " + blah);
-	}
-	
-	@Mod.EventBusSubscriber
-	public static class Testing {
-		@SubscribeEvent
-		public static void text(RenderGameOverlayEvent.Text t) {
-			t.getLeft().add("Im a banana!!!!!!");
-		}
+		dumpList.add(HR);
+		dumpList.add("A grand total of " + classCount + " classes.");
+		dumpList.add("If you would like to disable these, add the class name to your NoDebug5You config file!");
+		dumpList.add(HR);
 		
-		@SubscribeEvent
-		public static void chat(ClientChatEvent e) {
-			log.info("Bam!");
-		}
-	}
-	
-	public static class Testing2 {
-		@SubscribeEvent
-		public void text(RenderGameOverlayEvent.Text t) {
-			t.getLeft().add("Static");
+		if(NoDebug5YouConfig.dump) {
+			for(String line : dumpList) {
+				log.info(line);
+			}
 		}
 	}
 }
